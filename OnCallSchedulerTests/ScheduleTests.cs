@@ -65,6 +65,7 @@ namespace OnCallSchedulerTests
         public void AlernatesPrimaries()
         {
             var schedule = createSchedule();
+            schedule.FillUp();
             Assert.AreNotEqual(schedule[0].Primary, schedule[1].Primary);
         }
 
@@ -72,7 +73,9 @@ namespace OnCallSchedulerTests
         {
             var agents = JsonConvert.DeserializeObject<List<Agent>>(Resources.AgentsJson);
             var start = new DateTime(2014, 7, 28);
-            return new Schedule(agents, start, start + new TimeSpan(28, 0, 0, 0));
+            var schedule = new Schedule(agents, start, start + new TimeSpan(28, 0, 0, 0));
+            schedule.FillUp();
+            return schedule;
         }
 
         [TestMethod]
@@ -120,6 +123,31 @@ namespace OnCallSchedulerTests
             }
 
             assertMinimumAssignment(schedule);
+        }
+
+        [TestMethod]
+        public void DontWorkTwoWeekendsInARow()
+        {
+            var worksFirst = new Agent{Name="WorksFirstWeekEnd"};
+            var agents = new[] {worksFirst,
+                new Agent{Name="WorksLastWeekEnd"}};
+            //Starts on a Sunday.
+            var start = new DateTime(2014, 9, 7);
+            var end = start.AddDays(8);
+            var schedule = new Schedule(agents, start, end);
+            schedule[start].Primary = worksFirst;
+            schedule.FillUp();
+            var someoneAssigned = false;
+            for (int i = schedule.Count() - 3; i < schedule.Count(); i++)
+            {
+                if (schedule[i].Primary != null)
+                {
+                    someoneAssigned = true;
+                    Assert.AreNotEqual(worksFirst, schedule[i].Primary, "Someone was assigned 2 weekends in a row.");
+                }
+            }
+
+            Assert.IsTrue(someoneAssigned, "No one was assigned the second weekend");
         }
     }
 }

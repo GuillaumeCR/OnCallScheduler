@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace OnCallScheduler
 {
-    public static class Extensions
+    public static class ListExtensions
     {
         public static void Shuffle<T>(this IList<T> list, int start, int end)
         {

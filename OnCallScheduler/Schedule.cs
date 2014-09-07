@@ -17,10 +17,13 @@ namespace OnCallScheduler
 
             createPeriods(start, end);
             _agents = agents.ToList();
+        }
+
+        public void FillUp()
+        {
             shuffleAgents();
 
             assignPrimaries();
-            //assignBackups();
         }
 
         private void createPeriods(DateTime start, DateTime end)
@@ -36,6 +39,9 @@ namespace OnCallScheduler
             }
         }
 
+        /// <summary>
+        /// Sorts agents by PrimaryPoints, then shuffles each section that has the same PrimaryPoints.
+        /// </summary>
         private void shuffleAgents()
         {
             _agents.Sort(new Agent.LeastPrimary());
@@ -77,23 +83,67 @@ namespace OnCallScheduler
 
         private void assignPrimaries()
         {
-            Agent previousPrimary = null;
-            foreach (var period in this)
+            for (int i = 0; i < this.Count(); i++)
             {
-                Agent available = null;
+                var period = this[i];
+
+                if (period.Primary != null)
+                {
+                    continue;
+                }
+
                 foreach (var agent in _agents)
                 {
-                    if (agent.IsAvailable(period.Day) && agent != previousPrimary)
+                    if (agent.IsAvailable(period.Day)
+                        && (i == 0 || this[i - 1].Primary != agent) //Didn't work yesterday
+                        && (i == this.Count() - 1 || this[i + 1].Primary != agent) //Isn't working tomorrow
+                        && (!period.Day.IsWeekEnd() || !agentWorkedLastWeekEnd(agent, period)))
                     {
-                        available = agent;
+                        assignPrimary(period, agent);
                         break;
                     }
                 }
-                if (available != null)
+            }
+        }
+
+        private bool agentWorkedLastWeekEnd(Agent agent, Period period)
+        {
+            var lastWeekEnd = period.Day.GetLastWeekEnd();
+            foreach (var day in lastWeekEnd)
+            {
+                if (Contains(day) &&
+                    this[day].Primary == agent)
                 {
-                    assignPrimary(period, available);
-                    previousPrimary = available;
+                    return true;
                 }
+            }
+            return false;
+        }
+
+        public bool Contains(DateTime date)
+        {
+            foreach (var period in this)
+            {
+                if (period.Day == date)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public Period this[DateTime date]
+        {
+            get
+            {
+                foreach (var period in this)
+                {
+                    if (period.Day == date)
+                    {
+                        return period;
+                    }
+                }
+                throw new IndexOutOfRangeException("No periods for that day.");
             }
         }
 
@@ -124,7 +174,12 @@ namespace OnCallScheduler
             sb.AppendLine("Schedule:");
             foreach (var period in this)
             {
-                sb.AppendLine(period.Day.ToString("MM/dd") + " Primary: " + period.Primary.Name);
+                var primaryString = "Could not assign.";
+                if (period.Primary != null)
+                {
+                    primaryString = period.Primary.Name;
+                }
+                sb.AppendLine(period.Day.ToString("MM/dd") + " Primary: " + primaryString);
             }
             sb.AppendLine("Agents:");
             var jsonSettings = new JsonSerializerSettings { DateFormatString = "MM/dd" };
@@ -134,13 +189,5 @@ namespace OnCallScheduler
             }
             return sb.ToString();
         }
-
-        //private void assignBackups()
-        //{
-        //    foreach (var period in this)
-        //    {
-        //        period.Backup = _agents[0];
-        //    }
-        //}
     }
 }

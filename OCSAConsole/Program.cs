@@ -25,6 +25,7 @@ namespace OCSAConsole
 
                 var agents = JsonConvert.DeserializeObject<List<Agent>>(File.ReadAllText(DefaultAgentFile));
                 var schedule = new Schedule(agents, _start, _start + new TimeSpan(28, 0, 0, 0));
+                schedule.FillUp();
                 File.WriteAllText("Schedule.txt", schedule.ToString());
                 Process.Start("Schedule.txt");
             }
