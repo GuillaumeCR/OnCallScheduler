@@ -8,9 +8,14 @@ namespace OnCallScheduler
 {
     public class Period
     {
+        public Period()
+        {
+            AvailableAgents = new List<Agent>();
+        }
+
         public DateTime Day { get; set; }
         public Agent Primary { get; set; }
-        //public Agent Backup { get; set; }
+        public List<Agent> AvailableAgents { get; set; }
 
         public int PointValue
         {
@@ -22,6 +27,11 @@ namespace OnCallScheduler
                 }
                 return 1;
             }
+        }
+
+        public override string ToString()
+        {
+            return "Day: " + Day.ToString("MM/dd") + ", Primary: " + Primary.Name + ", PointValue: " + PointValue;
         }
     }
 }

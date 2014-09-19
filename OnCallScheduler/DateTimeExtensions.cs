@@ -15,6 +15,21 @@ namespace OnCallScheduler
                 date.DayOfWeek == DayOfWeek.Sunday;
         }
 
+        public static DateTime[] GetNextWeekEnd(this DateTime date)
+        {
+            if (date.IsWeekEnd())
+            {
+                date = date.AddDays(3);
+            }
+
+            while (date.DayOfWeek != DayOfWeek.Friday)
+            {
+                date = date.AddDays(1);
+            }
+
+            return new[] { date.AddDays(2), date.AddDays(1), date };
+        }
+
         public static DateTime[] GetLastWeekEnd(this DateTime date)
         {
             if (date.IsWeekEnd())

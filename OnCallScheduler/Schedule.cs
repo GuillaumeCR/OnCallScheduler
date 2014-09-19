@@ -7,8 +7,82 @@ using Newtonsoft.Json;
 
 namespace OnCallScheduler
 {
+    public enum ScheduleFillingStrategy
+    {
+        Chronological,
+        ByLeastAvailablesFirst
+    }
+
     public class Schedule : List<Period>
     {
+        /// <summary>
+        /// The point difference between the least and most busy Agents.
+        /// </summary>
+        public int MaxPointDiscrepancy
+        {
+            get
+            {
+                return _agents.Max(agent => agent.TotalPrimaryPoints) -
+                    _agents.Min(agent => agent.TotalPrimaryPoints);
+            }
+        }
+
+        public decimal AverageSpread
+        {
+            get
+            {
+                int up = 0;
+                int down = 0;
+                foreach (var agent in _agents)
+                {
+                    var previousDay = new DateTime?();
+                    foreach (var period in this)
+                    {
+                        if (period.Primary == agent)
+                        {
+                            if (previousDay.HasValue)
+                            {
+                                up += (period.Day - previousDay.Value).Days;
+                                down += 1;
+                            }
+                            previousDay = period.Day;
+                        }
+                    }
+                }
+
+                return (decimal)up / down;
+            }
+        }
+
+        public int MinimumSpread
+        {
+            get
+            {
+                var minimum = int.MaxValue;
+                foreach (var agent in _agents)
+                {
+                    var previousDay = new DateTime?();
+                    foreach (var period in this)
+                    {
+                        if (period.Primary == agent)
+                        {
+                            if (previousDay.HasValue)
+                            {
+                                var spread = (period.Day - previousDay.Value).Days;
+                                if (spread < minimum)
+                                {
+                                    minimum = spread;
+                                }
+                            }
+                            previousDay = period.Day;
+                        }
+                    }
+                }
+
+                return minimum;
+            }
+        }
+
         private readonly List<Agent> _agents;
 
         public Schedule(IEnumerable<Agent> agents, DateTime start, DateTime end)
@@ -81,7 +155,139 @@ namespace OnCallScheduler
             }
         }
 
-        private void assignPrimaries()
+        private void assignAvailables()
+        {
+            foreach (var period in this)
+            {
+                period.AvailableAgents.Clear();
+                foreach (var agent in _agents)
+                {
+                    if (agent.IsAvailable(period.Day))
+                    {
+                        period.AvailableAgents.Add(agent);
+                    }
+                }
+            }
+        }
+
+        private const ScheduleFillingStrategy Strategy = ScheduleFillingStrategy.ByLeastAvailablesFirst;
+
+        private void assignPrimaries(ScheduleFillingStrategy strategy)
+        {
+            switch (strategy)
+            {
+                case ScheduleFillingStrategy.Chronological:
+                    assignPrimariesChronologically();
+                    break;
+                case ScheduleFillingStrategy.ByLeastAvailablesFirst:
+                    assignPrimariesByAvailability();
+                    break;
+                default:
+                    throw new Exception("Unknown strategy " + strategy);
+            }
+        }
+
+        private Period previousPeriod(Period period)
+        {
+            if (this[0] == period)
+            {
+                return null;
+            }
+            var index = IndexOf(period);
+            if (index == -1)
+            {
+                throw new Exception("Period wasn't from this schedule.");
+            }
+
+            return this[index - 1];
+        }
+
+        private Period nextPeriod(Period period)
+        {
+            if (this.Last() == period)
+            {
+                return null;
+            }
+            var index = IndexOf(period);
+            if (index == -1)
+            {
+                throw new Exception("Period wasn't from this schedule.");
+            }
+
+            return this[index + 1];
+        }
+
+        private bool IsCandidateValid
+            (Period period, Agent agent)
+        {
+            var previousDay = previousPeriod(period);
+            var nextDay = nextPeriod(period);
+
+            return agent.IsAvailable(period.Day)
+                        && (previousDay == null || previousDay.Primary != agent) //Didn't work yesterday
+                        && (nextDay == null || nextDay.Primary != agent) //Isn't working tomorrow
+                        && (!period.Day.IsWeekEnd() || 
+                            (!agentWorkedLastWeekEnd(agent, period)
+                            && !agentIsWorkingNextWeekEnd(agent, period)));
+        }
+
+        /// <summary>
+        /// Distance is the number of days between period and the last or next time an agent is assigned as Primary.
+        /// </summary>
+        /// <param name="period"></param>
+        /// <param name="agent"></param>
+        /// <returns></returns>
+        private int GetDistance(Period period, Agent agent)
+        {
+            var distanceBefore = int.MaxValue;
+            for (int i = IndexOf(period) - 1; i >= 0; i--)
+            {
+                if (this[i].Primary == agent)
+                {
+                    distanceBefore = IndexOf(period) - i;
+                    break;
+                }
+            }
+            var distanceAfter = int.MaxValue;
+            for (int i = IndexOf(period) + 1; i < this.Count; i++)
+            {
+                if (this[i].Primary == agent)
+                {
+                    distanceAfter = i - IndexOf(period);
+                    break;
+                }
+            }
+
+            return Math.Min(distanceAfter, distanceBefore);
+        }
+
+        private void assignPrimariesByAvailability()
+        {
+            assignAvailables();
+            foreach (var period in this.OrderBy(period => period.AvailableAgents.Count))
+            {
+                if (period.Primary != null)
+                {
+                    continue;
+                }
+
+                var candidates = period.AvailableAgents
+                    .Where(candidate => IsCandidateValid(period, candidate));
+
+                if (!candidates.Any())
+                {
+                    continue;
+                }
+
+                var minTotalPoints = candidates.Min(candidate => candidate.TotalPrimaryPoints);
+
+                var bestCandidate = candidates.Where(candidate => candidate.TotalPrimaryPoints == minTotalPoints)
+                    .OrderBy(candidate => GetDistance(period, candidate)).LastOrDefault();
+                AssignPrimary(period, bestCandidate);                
+            }
+        }
+
+        private void assignPrimariesChronologically()
         {
             for (int i = 0; i < this.Count(); i++)
             {
@@ -94,22 +300,36 @@ namespace OnCallScheduler
 
                 foreach (var agent in _agents)
                 {
-                    if (agent.IsAvailable(period.Day)
-                        && (i == 0 || this[i - 1].Primary != agent) //Didn't work yesterday
-                        && (i == this.Count() - 1 || this[i + 1].Primary != agent) //Isn't working tomorrow
-                        && (!period.Day.IsWeekEnd() || !agentWorkedLastWeekEnd(agent, period)))
+                    if (IsCandidateValid(period, agent))
                     {
-                        assignPrimary(period, agent);
+                        AssignPrimary(period, agent);
+                        reorderAgent(agent);
                         break;
                     }
                 }
             }
         }
 
+        private void assignPrimaries()
+        {
+            assignPrimaries(Strategy);
+        }
+
         private bool agentWorkedLastWeekEnd(Agent agent, Period period)
         {
             var lastWeekEnd = period.Day.GetLastWeekEnd();
-            foreach (var day in lastWeekEnd)
+            return agentWorked(agent, lastWeekEnd);
+        }
+
+        private bool agentIsWorkingNextWeekEnd(Agent agent, Period period)
+        {
+            var nextWeekEnd = period.Day.GetNextWeekEnd();
+            return agentWorked(agent, nextWeekEnd);
+        }
+
+        private bool agentWorked(Agent agent, DateTime[] days)
+        {
+            foreach (var day in days)
             {
                 if (Contains(day) &&
                     this[day].Primary == agent)
@@ -147,16 +367,24 @@ namespace OnCallScheduler
             }
         }
 
-        private void assignPrimary(Period period, Agent agent)
+        public void AssignPrimary
+            (Period period, Agent agent)
         {
             period.Primary = agent;
-            agent.PrimaryCount += period.PointValue;
+            agent.PrimaryCount += 1;
+            agent.PrimaryPoints += period.PointValue;
+        }
 
-            //Move the agent to the highest index in the list above other agents with the same PrimaryPoints.
+        /// <summary>
+        /// Moves provided agent after all other agent with equal TotalPrimaryPoints
+        /// </summary>
+        /// <param name="agent"></param>
+        private void reorderAgent(Agent agent)
+        {
             _agents.Remove(agent);
             for (int i = 0; i < _agents.Count; i++)
             {
-                if (_agents[i].PrimaryPoints > agent.PrimaryPoints)
+                if (_agents[i].TotalPrimaryPoints > agent.TotalPrimaryPoints)
                 {
                     _agents.Insert(i, agent);
                     break;

@@ -11,10 +11,14 @@ namespace OnCallScheduler
     {
         public string Name { get; set; }
         public int PrimaryCount { get; set; }
+        public int PrimaryPoints { get; set; }
         public int BackupCount { get; set; }
         public int PointReduction { get; set; }
-        [JsonIgnore]
-        public int PrimaryPoints { get { return PrimaryCount + PointReduction; } }
+        /// <summary>
+        /// Includes PointReduction
+        /// </summary>
+        public int TotalPrimaryPoints
+        { get { return PrimaryPoints + PointReduction; } }
 
         private List<DateTime> _cantWorkOn;
         public List<DateTime> CantWorkOn
@@ -60,7 +64,7 @@ namespace OnCallScheduler
                 {
                     throw new ArgumentNullException();
                 }
-                return first.PrimaryPoints - second.PrimaryPoints;
+                return first.TotalPrimaryPoints - second.TotalPrimaryPoints;
             }
         }
 

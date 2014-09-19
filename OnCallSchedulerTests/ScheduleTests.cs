@@ -11,6 +11,8 @@ namespace OnCallSchedulerTests
     [TestClass]
     public class ScheduleTests
     {
+        private readonly TestScheduleFactory ScheduleFactory = new TestScheduleFactory();
+
         [TestMethod]
         public void CreatesPeriods()
         {
@@ -21,14 +23,14 @@ namespace OnCallSchedulerTests
         [TestMethod]
         public void Shuffles()
         {
-            var first = createScheduleFromAgentsTxt();
+            var first = ScheduleFactory.createScheduleFromAgentsTxt();
             var succeededOnce = false;
             //Should get one success in 5 shots at least.
             for (int i = 0; i < 5; i++)
             {
                 //Sleep to change Rand seed. tsk tsk tsk.
                 System.Threading.Thread.Sleep(10);
-                var second = createScheduleFromAgentsTxt();
+                var second = ScheduleFactory.createScheduleFromAgentsTxt();
                 //Check the first 3 primaries. At least 1 of those should be different.
                 for (int j = 0; j < 3; j++)
                 {
@@ -69,19 +71,11 @@ namespace OnCallSchedulerTests
             Assert.AreNotEqual(schedule[0].Primary, schedule[1].Primary);
         }
 
-        private Schedule createScheduleFromAgentsTxt()
-        {
-            var agents = JsonConvert.DeserializeObject<List<Agent>>(Resources.AgentsJson);
-            var start = new DateTime(2014, 7, 28);
-            var schedule = new Schedule(agents, start, start + new TimeSpan(28, 0, 0, 0));
-            schedule.FillUp();
-            return schedule;
-        }
 
         [TestMethod]
         public void RespectsSimpleCantWorkOn()
         {
-            var schedule = createScheduleFromAgentsTxt();
+            var schedule = ScheduleFactory.createScheduleFromAgentsTxt();
             foreach (var period in schedule)
             {
                 foreach (var vacation in period.Primary.CantWorkOn)
@@ -111,7 +105,7 @@ namespace OnCallSchedulerTests
         [TestMethod]
         public void NotPrimaryTwoDaysInARow()
         {
-            var schedule = createScheduleFromAgentsTxt();
+            var schedule = ScheduleFactory.createScheduleFromAgentsTxt();
             Agent previousAgent = null;
             foreach (var period in schedule)
             {
