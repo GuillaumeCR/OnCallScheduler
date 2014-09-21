@@ -93,6 +93,14 @@ namespace OnCallScheduler
             _agents = agents.ToList();
         }
 
+        public Schedule(IEnumerable<Agent> agents, DateTime start, int days)
+        {
+            var end = start.AddDays(days);
+            validateArguments(agents, start, end);
+            createPeriods(start, end);
+            _agents = agents.ToList();
+        }
+
         public void FillUp()
         {
             shuffleAgents();
@@ -281,7 +289,7 @@ namespace OnCallScheduler
 
                 var minTotalPoints = candidates.Min(candidate => candidate.TotalPrimaryPoints);
 
-                var bestCandidate = candidates.Where(candidate => candidate.TotalPrimaryPoints == minTotalPoints)
+                var bestCandidate = candidates.Where(candidate => candidate.TotalPrimaryPoints < minTotalPoints + 2)
                     .OrderBy(candidate => GetDistance(period, candidate)).LastOrDefault();
                 AssignPrimary(period, bestCandidate);                
             }
@@ -409,12 +417,16 @@ namespace OnCallScheduler
                 }
                 sb.AppendLine(period.Day.ToString("MM/dd") + " Primary: " + primaryString);
             }
+            sb.AppendLine("MaxDiscrepancy:" + MaxPointDiscrepancy +
+                ", Average Spread: " + AverageSpread +
+                ", Minimum Spread: " + MinimumSpread);
             sb.AppendLine("Agents:");
             var jsonSettings = new JsonSerializerSettings { DateFormatString = "MM/dd" };
             foreach (var agent in _agents)
             {
                 sb.AppendLine(JsonConvert.SerializeObject(agent, jsonSettings));
             }
+
             return sb.ToString();
         }
     }

@@ -1,0 +1,22 @@
+﻿<Window
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:OnCallScheduler="clr-namespace:OnCallScheduler;assembly=OnCallScheduler" x:Class="OcsaWinApp.MainWindow"
+        Title="MainWindow" Height="396" Width="525">
+    <Canvas >
+        <ComboBox x:Name="AgentComboBox" Canvas.Left="10" Canvas.Top="41" Width="230"
+                  ItemsSource="{Binding}" DisplayMemberPath="Name" IsSynchronizedWithCurrentItem="True" SelectionChanged="AgentComboBox_SelectionChanged"/>
+        <Button x:Name="AddAgentButton" Content="Add" Canvas.Left="234" Canvas.Top="12" Width="75" Click="Button_Click"/>
+        <Label Content="Add New Agent" Canvas.Left="10" Canvas.Top="10"/>
+        <TextBox x:Name="NewAgentTextBox" Height="23" Canvas.Left="109" TextWrapping="Wrap" Canvas.Top="12" Width="120"/>
+        <Button x:Name="DeleteAgentButton" Content="Delete" Canvas.Left="245" Canvas.Top="41" Width="75" Click="DeleteAgentButton_Click"/>
+        <TextBlock Canvas.Left="196" TextWrapping="Wrap" Text="Point Reduction" Canvas.Top="71"/>
+        <TextBox x:Name="PointReductionTextBox" Height="23" Canvas.Left="285" TextWrapping="Wrap" Canvas.Top="68" Width="120"
+                 Text="{Binding Path=PointReduction, Mode=TwoWay}" TextChanged="PointReductionTextBox_TextChanged" />
+        <Calendar x:Name="CantWorkOnCalender" Canvas.Left="10" Canvas.Top="89" SelectionMode="MultipleRange" SelectedDatesChanged="CantWorkOnCalender_SelectedDatesChanged"/>
+        <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Can't Work On" Canvas.Top="68"/>
+        <Button x:Name="GenerateScheduleButton" Content="Generate Schedule" Canvas.Left="198" Canvas.Top="263" Width="137" Click="GenerateScheduleButton_Click"/>
+        <TextBlock Canvas.Left="10" TextWrapping="Wrap" Text="Schedule Start" Canvas.Top="266"/>
+        <DatePicker x:Name="ScheduleStartDatePicker" Canvas.Left="91" Canvas.Top="262"/>
+    </Canvas>
+</Window>
