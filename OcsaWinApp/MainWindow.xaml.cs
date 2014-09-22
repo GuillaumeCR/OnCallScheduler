@@ -107,7 +107,8 @@ namespace OcsaWinApp
 
         private void GenerateScheduleButton_Click(object sender, RoutedEventArgs e)
         {
-            var schedule = new Schedule(Agents, ScheduleStartDatePicker.SelectedDate.Value , 28);
+            var statDays = StatDaysCalendar.SelectedDates.ToList<DateTime>();
+            var schedule = new Schedule(Agents, ScheduleStartDatePicker.SelectedDate.Value , 28, statDays);
             schedule.FillUp();
             var filename = System.IO.Path.GetRandomFileName() + ".txt";
             File.WriteAllText(filename, schedule.ToString());

@@ -302,7 +302,8 @@ namespace OnCallScheduler
         private void assignPrimariesByAvailability()
         {
             assignAvailables();
-            foreach (var period in this.OrderBy(period => period.AvailableAgents.Count))
+            foreach (var period in this.OrderBy(period => period.AvailableAgents.Count)
+                .ThenByDescending(period => period.PointValue))
             {
                 if (period.Primary != null)
                 {
