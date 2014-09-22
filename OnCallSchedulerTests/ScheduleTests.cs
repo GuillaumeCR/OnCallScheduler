@@ -19,9 +19,10 @@ namespace OnCallSchedulerTests
                 new Agent{Name="other guy", PointReduction = 2}};
             var start = new DateTime(2014, 9, 22);
             var statDay = new List<DateTime> { start };
-            var schedule = new Schedule(agents, start, 1, statDay);
+            var schedule = new Schedule(agents, start, 2, statDay);
             schedule.FillUp();
             Assert.AreEqual(2, agents[0].TotalPrimaryPoints, "Agent should have received 2 point for working on a stat day");
+            Assert.AreEqual(1, schedule[1].PointValue, "Second schedule day should be worth 1 point");
         }
 
         private readonly TestScheduleFactory ScheduleFactory = new TestScheduleFactory();
