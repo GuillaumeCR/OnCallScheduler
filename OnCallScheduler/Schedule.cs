@@ -51,7 +51,11 @@ namespace OnCallScheduler
                     }
                 }
 
-                return (decimal)up / down;
+                if (down > 0)
+                {
+                    return (decimal)up / down;
+                }
+                return 0;
             }
         }
 
@@ -130,6 +134,7 @@ namespace OnCallScheduler
 
         public void FillUp()
         {
+            Logging.Log.Debug("Filling up schedule.");
             shuffleAgents();
 
             assignPrimaries();
@@ -310,13 +315,19 @@ namespace OnCallScheduler
                     continue;
                 }
 
+                Logging.Log.Debug("Assigning " + period.ToDebugString());
+
                 var candidates = period.AvailableAgents
                     .Where(candidate => IsCandidateValid(period, candidate));
 
                 if (!candidates.Any())
                 {
+                    Logging.Log.Debug("No candidates");
                     continue;
                 }
+
+                Logging.Log.Debug("Candidates: " + string.Join(", ", candidates.Select(
+                    candidate => candidate.Name + "(" + candidate.TotalPrimaryPoints + ")")));
 
                 var minTotalPoints = candidates.Min(candidate => candidate.TotalPrimaryPoints);
 
@@ -409,9 +420,13 @@ namespace OnCallScheduler
         public void AssignPrimary
             (Period period, Agent agent)
         {
+            Logging.Log.Debug("Assigning " + agent.Name + " on " + period.Day.ToString("MM/dd"));
             period.Primary = agent;
             agent.PrimaryCount += 1;
             agent.PrimaryPoints += period.PointValue;
+
+            Logging.Log.Debug("Schedule now looks like " + ToString());
+
         }
 
         /// <summary>

@@ -34,7 +34,14 @@ namespace OnCallScheduler
 
         public override string ToString()
         {
-            return "Day: " + Day.ToString("MM/dd") + ", Primary: " + Primary.Name + ", PointValue: " + PointValue;
+            return "Day: " + Day.ToString("MM/dd") 
+                + Primary ?? (", Primary: " + Primary.Name )
+                + ", PointValue: " + PointValue;
+        }
+
+        public string ToDebugString()
+        {
+            return ToString() + ", Available: " + string.Join(", ", AvailableAgents);
         }
     }
 }
