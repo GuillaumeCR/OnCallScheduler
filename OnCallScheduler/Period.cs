@@ -16,12 +16,15 @@ namespace OnCallScheduler
         public DateTime Day { get; set; }
         public Agent Primary { get; set; }
         public List<Agent> AvailableAgents { get; set; }
+        public bool IsStatDay { get; set; }
 
         public int PointValue
         {
             get
             {
-                if (Day.DayOfWeek == DayOfWeek.Saturday || Day.DayOfWeek == DayOfWeek.Sunday)
+                if (Day.DayOfWeek == DayOfWeek.Saturday 
+                    || Day.DayOfWeek == DayOfWeek.Sunday
+                    || IsStatDay)
                 {
                     return 2;
                 }

@@ -11,6 +11,19 @@ namespace OnCallSchedulerTests
     [TestClass]
     public class ScheduleTests
     {
+        [TestMethod]
+        public void StatDaysAreWorth2Points()
+        {
+            //Makes sure lolwut gets assigned by giving the other guy point reduction.
+            var agents = new List<Agent> { new Agent { Name = "lolwut" },
+                new Agent{Name="other guy", PointReduction = 2}};
+            var start = new DateTime(2014, 9, 22);
+            var statDay = new List<DateTime> { start };
+            var schedule = new Schedule(agents, start, 1, statDay);
+            schedule.FillUp();
+            Assert.AreEqual(2, agents[0].TotalPrimaryPoints, "Agent should have received 2 point for working on a stat day");
+        }
+
         private readonly TestScheduleFactory ScheduleFactory = new TestScheduleFactory();
 
         [TestMethod]
@@ -122,7 +135,7 @@ namespace OnCallSchedulerTests
         [TestMethod]
         public void DontWorkTwoWeekendsInARow()
         {
-            var worksFirst = new Agent{Name="WorksFirstWeekEnd"};
+            var worksFirst = new Agent { Name = "WorksFirstWeekEnd" };
             var agents = new[] {worksFirst,
                 new Agent{Name="WorksLastWeekEnd"}};
             //Starts on a Sunday.

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
+using System.Collections.ObjectModel;
 
 namespace OnCallScheduler
 {
@@ -84,6 +85,9 @@ namespace OnCallScheduler
         }
 
         private readonly List<Agent> _agents;
+        private readonly List<DateTime> _statDays = new List<DateTime>();
+
+        public ReadOnlyCollection<DateTime> StatDays { get { return new ReadOnlyCollection<DateTime>(_statDays); } }
 
         public Schedule(IEnumerable<Agent> agents, DateTime start, DateTime end)
         {
@@ -99,6 +103,29 @@ namespace OnCallScheduler
             validateArguments(agents, start, end);
             createPeriods(start, end);
             _agents = agents.ToList();
+        }
+
+        public Schedule(IEnumerable<Agent> agents, DateTime start, int days, IEnumerable<DateTime> StatDays)
+            : this(agents, start, days)
+        {
+            _statDays = StatDays.ToList();
+            foreach (var period in this.Join(_statDays,
+                outerPeriod => new
+                {
+                    Year = outerPeriod.Day.Year,
+                    Month = outerPeriod.Day.Month,
+                    Day = outerPeriod.Day.Day
+                },
+                statDay => new
+                {
+                    Year = statDay.Year,
+                    Month = statDay.Month,
+                    Day = statDay.Day
+                },
+                    (period1, statDay) => period1))
+            {
+                period.IsStatDay = true;
+            }
         }
 
         public void FillUp()
@@ -142,8 +169,11 @@ namespace OnCallScheduler
                 {
                     continue;
                 }
-                _agents.Shuffle(start, i);
-                start = i;
+                if (start != i)
+                {
+                    _agents.Shuffle(start, i);
+                    start = i;
+                }
             }
         }
 
@@ -234,7 +264,7 @@ namespace OnCallScheduler
             return agent.IsAvailable(period.Day)
                         && (previousDay == null || previousDay.Primary != agent) //Didn't work yesterday
                         && (nextDay == null || nextDay.Primary != agent) //Isn't working tomorrow
-                        && (!period.Day.IsWeekEnd() || 
+                        && (!period.Day.IsWeekEnd() ||
                             (!agentWorkedLastWeekEnd(agent, period)
                             && !agentIsWorkingNextWeekEnd(agent, period)));
         }
@@ -291,7 +321,7 @@ namespace OnCallScheduler
 
                 var bestCandidate = candidates.Where(candidate => candidate.TotalPrimaryPoints < minTotalPoints + 2)
                     .OrderBy(candidate => GetDistance(period, candidate)).LastOrDefault();
-                AssignPrimary(period, bestCandidate);                
+                AssignPrimary(period, bestCandidate);
             }
         }
 
