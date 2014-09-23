@@ -31,6 +31,7 @@ namespace OcsaWinApp
             DataContext = Agents;
 
             AgentComboBox.SelectedIndex = 0;
+            ScheduleStartDatePicker.SelectedDate = DateTime.Now;
         }
 
         public ObservableCollection<Agent> Agents { get { return ((IOcsaWinApp)App.Current).Agents; } }

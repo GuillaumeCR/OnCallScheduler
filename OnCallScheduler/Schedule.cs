@@ -307,14 +307,14 @@ namespace OnCallScheduler
         private void assignPrimariesByAvailability()
         {
             assignAvailables();
-            foreach (var period in this.OrderBy(period => period.AvailableAgents.Count)
-                .ThenByDescending(period => period.PointValue))
+            for (int i = 0; i < this.Count(); i++)
             {
-                if (period.Primary != null)
+                var period = GetUnassignedPeriodWithLeastCandidates();
+                if (period == null)
                 {
-                    continue;
+                    break;
                 }
-
+                
                 Logging.Log.Debug("Assigning " + period.ToDebugString());
 
                 var candidates = period.AvailableAgents
@@ -326,15 +326,29 @@ namespace OnCallScheduler
                     continue;
                 }
 
-                Logging.Log.Debug("Candidates: " + string.Join(", ", candidates.Select(
-                    candidate => candidate.Name + "(" + candidate.TotalPrimaryPoints + ")")));
-
                 var minTotalPoints = candidates.Min(candidate => candidate.TotalPrimaryPoints);
 
-                var bestCandidate = candidates.Where(candidate => candidate.TotalPrimaryPoints < minTotalPoints + 2)
-                    .OrderBy(candidate => GetDistance(period, candidate)).LastOrDefault();
-                AssignPrimary(period, bestCandidate);
+                var orderedCandidates = candidates.Where(candidate => candidate.TotalPrimaryPoints < minTotalPoints + 2)
+                    .OrderByDescending(candidate => 
+                            Math.Min(GetDistance(period, candidate), 7)) //Distances above 7 don't really matter.
+                    .ThenBy(candidate => candidate.TotalPrimaryPoints);
+                
+                Logging.Log.Debug("Candidates: " + string.Join(", ", orderedCandidates.Select(
+                    candidate => candidate.Name + "(P" + candidate.TotalPrimaryPoints + "D" + GetDistance(period, candidate) + ")")));
+                
+                AssignPrimary(period, orderedCandidates.First());
             }
+        }
+
+        private Period GetUnassignedPeriodWithLeastCandidates()
+        {
+            return this.Where(period => period.Primary == null)
+                .OrderByDescending(period => period.PointValue)
+                .ThenBy(period =>
+                    period.AvailableAgents
+                        .Where(agent => IsCandidateValid(period, agent))
+                        .Count())
+                .FirstOrDefault();
         }
 
         private void assignPrimariesChronologically()
